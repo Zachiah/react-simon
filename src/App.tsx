@@ -77,9 +77,8 @@ const dispatch = (s: State, a: Action): State => {
   throw exhaustiveCheck;
 }
 
-type PlayingStatus = 'gap' | 'show';
-
 export type Settings = {
+  firstGapDuration: number,
   gapDuration: number,
   showDuration: number,
   greenKey: string,
