@@ -4,6 +4,7 @@ Simon game implemented in react.
 
 ## Potential improvements
 - [x] Add sound
+- [x] Add gameover sound
 - [ ] Add highscore and score
 - [ ] Make it look prettier (:
 - [ ] Allow for multiple at once (possible via keyboard shortcuts).

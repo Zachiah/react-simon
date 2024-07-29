@@ -6,8 +6,8 @@ type Color = 'green' | 'red' | 'yellow' | 'blue';
 const colors = ['green', 'red', 'yellow', 'blue'] as const;
 const notes = ['C4', 'E4', 'G4', 'C5'];
 
-type State = {tag: 'playing', pattern: Color[], index: number, gap: boolean} | {tag: 'receiving', pattern: Color[], index: number} | {tag: 'game-over'} | {tag: 'begin'};
-type Action = {tag: 'restart'} | {tag: 'push-button', color: Color} | {tag: 'finished-showing-section'}
+type State = {tag: 'playing', pattern: Color[], index: number, gap: boolean} | {tag: 'receiving', pattern: Color[], index: number} | {tag: 'game-over', playedSound: boolean} | {tag: 'begin'};
+type Action = {tag: 'restart'} | {tag: 'push-button', color: Color} | {tag: 'finished-showing-section'} | {tag: 'played-game-over-sound'};
 
 
 const DEBUG = true;
@@ -64,7 +64,7 @@ const dispatch = (s: State, a: Action): State => {
     }
 
     if (s.pattern[s.index] !== a.color) {
-      return {tag: 'game-over'};
+      return {tag: 'game-over', playedSound: false};
     }
     
     if (s.index === s.pattern.length - 1) {
@@ -72,6 +72,10 @@ const dispatch = (s: State, a: Action): State => {
     }
 
     return {...s, index: s.index+1};
+  }
+  if (a.tag === 'played-game-over-sound') {
+    if (s.tag !== 'game-over') throw invalidStateError;
+    return {tag: 'game-over', playedSound: true};
   }
   const exhaustiveCheck: never = a;
   throw exhaustiveCheck;
@@ -163,6 +167,20 @@ function App() {
     }, state.gap ? (state.index === 0 ? settings.firstGapDuration : settings.gapDuration) : settings.showDuration);
     return () => clearTimeout(timeout);
   });
+
+  useEffect(() => {
+    if (state.tag === 'game-over' && !state.playedSound) {
+      const timeout = setTimeout(() => {
+        const now = Tone.now();
+        synth.triggerAttackRelease("A3", "8n", now);
+        synth.triggerAttackRelease("C3", "8n", now);
+        synth.triggerAttackRelease("Eb3", "8n", now);
+        synth.triggerAttackRelease("Gb3", "8n", now);
+        updateState({tag: 'played-game-over-sound'});
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  })
 
   const handleClick = (color: Color) => () => {
     updateState({tag: 'push-button', color: color});
