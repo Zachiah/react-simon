@@ -25,6 +25,12 @@ const SettingsDialog = (p: {
             }}
           >
             <Input
+              label="First Gap duration ms (space after you complete a round before next round)"
+              value={p.settings.firstGapDuration.toString()}
+              type="number"
+              onChange={(v) => p.setSettings({...p.settings, firstGapDuration: +v})}
+            />
+            <Input
               label="Gap duration ms (space after showing color before next)"
               value={p.settings.gapDuration.toString()}
               type="number"

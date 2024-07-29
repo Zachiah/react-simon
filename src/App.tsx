@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import SettingsDialog from './SettingsDialog';
+import * as Tone from "tone";
 
 type Color = 'green' | 'red' | 'yellow' | 'blue';
 const colors = ['green', 'red', 'yellow', 'blue'] as const;
+const notes = ['C4', 'E4', 'G4', 'C5'];
 
-type State = {tag: 'playing', pattern: Color[], index: number} | {tag: 'receiving', pattern: Color[], index: number} | {tag: 'game-over'} | {tag: 'begin'};
-type Action = {tag: 'restart'} | {tag: 'push-button', color: Color} | {tag: 'finished-showing-color'}
+type State = {tag: 'playing', pattern: Color[], index: number, gap: boolean} | {tag: 'receiving', pattern: Color[], index: number} | {tag: 'game-over'} | {tag: 'begin'};
+type Action = {tag: 'restart'} | {tag: 'push-button', color: Color} | {tag: 'finished-showing-section'}
 
 
 const DEBUG = true;
@@ -39,15 +41,19 @@ const useLocalStorage = <T,>(key: string, defaultValue: T, version = 1) => {
 const dispatch = (s: State, a: Action): State => {
   const invalidStateError = Error(`Invalid state transition:\n\nState:\n${JSON.stringify(s)}\n\nAction:\n${JSON.stringify(a)}`);
   if (a.tag === 'restart') {
-    return {tag: 'playing', pattern: [generateColor()], index: 0};
+    return {tag: 'playing', pattern: [generateColor()], index: 0, gap: true};
   }
-  if (a.tag === 'finished-showing-color') {
+  if (a.tag === 'finished-showing-section') {
     if (s.tag !== 'playing') throw invalidStateError;
+
+    if (s.gap === true) {
+      return {...s, gap: false};
+    }
     
     if (s.index === s.pattern.length - 1) {
       return {tag: 'receiving', pattern: s.pattern, index: 0};
     }
-    return {tag: 'playing', pattern: s.pattern, index: s.index+1}
+    return {tag: 'playing', pattern: s.pattern, index: s.index+1, gap: true}
   }
   if (a.tag === 'push-button') {
     if (s.tag === 'playing') {
@@ -62,7 +68,7 @@ const dispatch = (s: State, a: Action): State => {
     }
     
     if (s.index === s.pattern.length - 1) {
-      return {tag: 'playing', pattern: s.pattern.concat(generateColor()), index: 0};
+      return {tag: 'playing', pattern: s.pattern.concat(generateColor()), index: 0, gap: true};
     }
 
     return {...s, index: s.index+1};
@@ -85,9 +91,12 @@ export type Settings = {
 }
 
 
+const synth = new Tone.Synth().toDestination();
+
 function App() {
   const [state, updateState] = useStateReducer<State, Action>(dispatch, {tag: 'begin'});
   const [settings, setSettings] = useLocalStorage<Settings>('settings', {
+    firstGapDuration: 1000,
     gapDuration: 500,
     showDuration: 500,
     greenKey: 'g',
@@ -96,9 +105,7 @@ function App() {
     blueKey: 'b',
     restartKey: 'Enter',
     settingsKey: 's',
-  });
-
-  const [playingStatus, setPlayingStatus] = useState<PlayingStatus>('gap');
+  }, 2);
 
   const [pressedColor, setPressedColor] = useState<Color | undefined>(undefined);
 
@@ -109,7 +116,7 @@ function App() {
     const activeCssStateColorClasses = ['active:bg-green-600', 'active:bg-red-600', 'active:bg-yellow-200', 'active:bg-blue-600'];
     const normalColorClasses =         [       'bg-green-400', '       bg-red-400',        'bg-yellow-400',        'bg-blue-400'];
 
-    const isActive = (state.tag === 'playing' && state.pattern[state.index] === colors[index] && playingStatus === 'show') || pressedColor === colors[index];
+    const isActive = (state.tag === 'playing' && state.pattern[state.index] === colors[index] && !state.gap) || pressedColor === colors[index];
     return `w-1/2 aspect-square active ${activeCssStateColorClasses[index]} ${radiusClasses[index]} ${isActive ? activeColorClasses[index] : normalColorClasses[index]}`;
   };
 
@@ -129,18 +136,13 @@ function App() {
       }
     }
     const keydownHandler = (e: {key: string}) => {
-      if (e.key === settings.greenKey) {
-        setPressedColor('green');
+      const keys = [settings.greenKey, settings.redKey, settings.yellowKey, settings.blueKey];
+      const keyIndex = keys.indexOf(e.key);
+      if (keyIndex === -1) {
+        return;
       }
-      if (e.key === settings.redKey) {
-        setPressedColor('red');
-      }
-      if (e.key === settings.yellowKey) {
-        setPressedColor('yellow');
-      }
-      if (e.key === settings.blueKey) {
-        setPressedColor('blue');
-      }
+      synth.triggerAttackRelease(notes[keyIndex], "8n");
+      setPressedColor(colors[keyIndex]);
     }
     document.addEventListener('keyup', keyupHandler);
     document.addEventListener('keydown', keydownHandler);
@@ -154,13 +156,12 @@ function App() {
     if (state.tag !== 'playing') return;
 
     const timeout = setTimeout(() => {
-      if (playingStatus === 'gap') {
-        setPlayingStatus('show');
-      } else {
-        setPlayingStatus('gap');
-        updateState({tag: 'finished-showing-color'});
+      if (state.tag !== 'playing') return;
+      if (state.gap) {
+        synth.triggerAttackRelease(notes[colors.indexOf(state.pattern[state.index])], "8n");
       }
-    }, playingStatus === 'gap' ? settings.gapDuration : settings.showDuration);
+      updateState({tag: 'finished-showing-section'});
+    }, state.gap ? (state.index === 0 ? settings.firstGapDuration : settings.gapDuration) : settings.showDuration);
     return () => clearTimeout(timeout);
   });
 
@@ -170,13 +171,17 @@ function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const handleMouseDown = (index: number) => () => {
+    synth.triggerAttackRelease(notes[index], "8n");
+  }
+
   return (
     <>
       <SettingsDialog settings={settings} setSettings={setSettings} setSettingsOpen={setSettingsOpen} settingsOpen={settingsOpen} />
       <div className="flex h-screen items-center justify-center bg-black">
         <div className="aspect-square rounded-full bg-gray-200 h-[80vmin] flex flex-wrap relative">
           {[0,1,2,3].map(index => (
-            <button key={index} onClick={handleClick(colors[index])} className={getBtnClasses(index)}></button>
+            <button onMouseDown={handleMouseDown(index)} key={index} onClick={handleClick(colors[index])} className={getBtnClasses(index)}></button>
           ))}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/5 aspect-square rounded-full bg-black text-4xl flex items-center justify-center text-white">
             {state.tag === 'playing' || state.tag === 'receiving' ? 'SIMON' : ''}
