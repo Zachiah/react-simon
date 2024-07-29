@@ -6,8 +6,17 @@ type Color = 'green' | 'red' | 'yellow' | 'blue';
 const colors = ['green', 'red', 'yellow', 'blue'] as const;
 const notes = ['C4', 'E4', 'G4', 'C5'];
 
-type State = {tag: 'playing', pattern: Color[], index: number, gap: boolean} | {tag: 'receiving', pattern: Color[], index: number} | {tag: 'game-over', playedSound: boolean} | {tag: 'begin'};
-type Action = {tag: 'restart'} | {tag: 'push-button', color: Color} | {tag: 'finished-showing-section'} | {tag: 'played-game-over-sound'};
+type State = 
+  | {tag: 'playing', pattern: Color[], index: number, gap: boolean, score: number}
+  | {tag: 'receiving', pattern: Color[], index: number, score: number}
+  | {tag: 'game-over', playedSound: boolean, score: number}
+  | {tag: 'begin'};
+
+type Action = 
+  | {tag: 'restart'}
+  | {tag: 'push-button', color: Color}
+  | {tag: 'finished-showing-section'}
+  | {tag: 'played-game-over-sound'};
 
 
 const DEBUG = true;
@@ -41,7 +50,7 @@ const useLocalStorage = <T,>(key: string, defaultValue: T, version = 1) => {
 const dispatch = (s: State, a: Action): State => {
   const invalidStateError = Error(`Invalid state transition:\n\nState:\n${JSON.stringify(s)}\n\nAction:\n${JSON.stringify(a)}`);
   if (a.tag === 'restart') {
-    return {tag: 'playing', pattern: [generateColor()], index: 0, gap: true};
+    return {tag: 'playing', pattern: [generateColor()], index: 0, gap: true, score: 0};
   }
   if (a.tag === 'finished-showing-section') {
     if (s.tag !== 'playing') throw invalidStateError;
@@ -51,31 +60,31 @@ const dispatch = (s: State, a: Action): State => {
     }
     
     if (s.index === s.pattern.length - 1) {
-      return {tag: 'receiving', pattern: s.pattern, index: 0};
+      return {tag: 'receiving', pattern: s.pattern, index: 0, score: s.score};
     }
-    return {tag: 'playing', pattern: s.pattern, index: s.index+1, gap: true}
+    return {tag: 'playing', pattern: s.pattern, index: s.index+1, gap: true, score: s.score};
   }
   if (a.tag === 'push-button') {
     if (s.tag === 'playing') {
-      return dispatch({tag: 'receiving', pattern: s.pattern, index: 0}, a);
+      return dispatch({tag: 'receiving', pattern: s.pattern, index: 0, score: s.score}, a);
     }
     if (s.tag !== 'receiving') {
       throw invalidStateError;
     }
 
     if (s.pattern[s.index] !== a.color) {
-      return {tag: 'game-over', playedSound: false};
+      return {tag: 'game-over', playedSound: false, score: s.score};
     }
     
     if (s.index === s.pattern.length - 1) {
-      return {tag: 'playing', pattern: s.pattern.concat(generateColor()), index: 0, gap: true};
+      return {tag: 'playing', pattern: s.pattern.concat(generateColor()), index: 0, gap: true, score: s.score+1};
     }
 
     return {...s, index: s.index+1};
   }
   if (a.tag === 'played-game-over-sound') {
     if (s.tag !== 'game-over') throw invalidStateError;
-    return {tag: 'game-over', playedSound: true};
+    return {tag: 'game-over', playedSound: true, score: s.score};
   }
   const exhaustiveCheck: never = a;
   throw exhaustiveCheck;
@@ -109,6 +118,7 @@ function App() {
     restartKey: 'Enter',
     settingsKey: 's',
   }, 2);
+  const [highScore, setHighScore] = useLocalStorage<number>('highScore', 0);
 
   const [pressedColor, setPressedColor] = useState<Color | undefined>(undefined);
 
@@ -171,6 +181,7 @@ function App() {
   useEffect(() => {
     if (state.tag === 'game-over' && !state.playedSound) {
       const timeout = setTimeout(() => {
+        setHighScore(state.score);
         const now = Tone.now();
         synth.triggerAttackRelease("A3", "8n", now);
         synth.triggerAttackRelease("C3", "8n", now);
@@ -192,10 +203,16 @@ function App() {
     synth.triggerAttackRelease(notes[index], "8n");
   }
 
+  const score = state.tag === 'begin' ? 0 : state.score;
+
   return (
     <>
       <SettingsDialog settings={settings} setSettings={setSettings} setSettingsOpen={setSettingsOpen} settingsOpen={settingsOpen} />
       <div className="flex h-screen items-center justify-center bg-black">
+        <div className="fixed bottom-4 left-4 text-white flex flex-col">
+          <div>Score: {score}</div>
+          <div>High Score: {highScore}</div>
+        </div>
         <div className="aspect-square rounded-full bg-gray-200 h-[80vmin] flex flex-wrap relative">
           {[0,1,2,3].map(index => (
             <button onMouseDown={handleMouseDown(index)} key={index} onClick={handleClick(colors[index])} className={getBtnClasses(index)}></button>
