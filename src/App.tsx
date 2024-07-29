@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react'
+import Input from "./Input";
+import KeySelectorInput from "./KeySelectorInput";
+import SettingsDialog from './SettingsDialog';
 
 type Color = 'green' | 'red' | 'yellow' | 'blue';
 const colors = ['green', 'red', 'yellow', 'blue'] as const;
@@ -171,69 +174,7 @@ function App() {
 
   return (
     <>
-      <button className="fixed top-4 right-4 text-white" onClick={() => (setSettingsOpen(true))}>Settings</button>
-      {settingsOpen ? <div className="fixed overflow-auto z-20 h-screen w-screen top-0 left-0 bg-black bg-opacity-40 p-8" onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          setSettingsOpen(false);
-        }
-      }}>
-          <form
-            className="max-w-prose mx-auto p-4 rounded-md text-white bg-slate-800 mt-16 shadow-lg shadow-white"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setSettingsOpen(false);
-            }}
-          >
-            <Input
-              label="Gap duration ms (space after showing color before next)"
-              value={settings.gapDuration.toString()}
-              type="number"
-              onChange={(v) => setSettings({...settings, gapDuration: +v})}
-            />
-
-            <Input
-              label="Color duration ms (how long to show the color)"
-              value={settings.showDuration.toString()}
-              type="number"
-              onChange={(v) => setSettings({...settings, showDuration: +v})}
-            />
-
-            <KeySelectorInput
-              label="Green keybind"
-              value={settings.greenKey}
-              onChange={(v) => setSettings({...settings, greenKey: v})}
-            />
-            <KeySelectorInput
-              label="Red keybind"
-              value={settings.redKey}
-              onChange={(v) => setSettings({...settings, redKey: v})}
-            />
-            <KeySelectorInput
-              label="Yellow keybind"
-              value={settings.yellowKey}
-              onChange={(v) => setSettings({...settings, yellowKey: v})}
-            />
-            <KeySelectorInput
-              label="Blue keybind"
-              value={settings.blueKey}
-              onChange={(v) => setSettings({...settings, blueKey: v})}
-            />
-            <KeySelectorInput
-              label="Restart keybind"
-              value={settings.restartKey}
-              onChange={(v) => setSettings({...settings, restartKey: v})}
-            />
-            <KeySelectorInput
-              label="Settings keybind"
-              value={settings.settingsKey}
-              onChange={(v) => setSettings({...settings, settingsKey: v})}
-            />
-
-            <div className="flex p-2">
-              <button className="ml-auto bg-white py-2 px-4 rounded-md text-slate-800">Continue</button>
-            </div>
-          </form>
-        </div> : <></>}
+      <SettingsDialog settings={settings} setSettings={setSettings} setSettingsOpen={setSettingsOpen} settingsOpen={settingsOpen} />
       <div className="flex h-screen items-center justify-center bg-black">
         <div className="aspect-square rounded-full bg-gray-200 h-[80vmin] flex flex-wrap relative">
           {[0,1,2,3].map(index => (
@@ -250,48 +191,6 @@ function App() {
         </div>
       </div>
     </>
-  )
-}
-
-const Input = (p: {
-  value: string,
-  type: string,
-  onChange: (v: string) => void,
-  label: string,
-}) => {
-  return (
-    <label className="flex flex-col gap-2 my-6">
-      <div>{p.label}</div>
-      <input
-        className="rounded-md px-4 py-2 bg-transparent text-white border-b border-white focus:outline-none focus-visible:ring"
-        value={p.value}
-        type={p.type}
-        onChange={e => p.onChange(e.target.value)}
-      />
-    </label>
-  )
-}
-
-const KeySelectorInput = (p: {
-  value: string,
-  onChange: (v: string) => void,
-  label: string,
-}) => {
-  return (
-    <label className="flex flex-col gap-2 my-6">
-      <div>{p.label}</div>
-      <input
-        className="rounded-md px-4 py-2 bg-transparent text-white border-b border-white focus:outline-none focus-visible:ring"
-        value={p.value}
-        readOnly
-        onKeyDown={e => {
-          if (e.key !== "Tab" && e.key !== "Shift") {
-            e.preventDefault();
-            p.onChange(e.key)}
-          }
-        }
-      />
-    </label>
   )
 }
 
