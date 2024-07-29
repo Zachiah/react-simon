@@ -17,7 +17,6 @@
           buildInputs = with pkgs; [
             typescript
             nodePackages_latest.typescript-language-server
-            nodePackages_latest.ts-node
             tailwindcss-language-server
             nil
           ];
@@ -25,27 +24,5 @@
           shellHook = ''
           '';
         };
-        defaultPackage = pkgs.stdenv.mkDerivation {
-          pname = "react-simon";
-          version = "1.0.0";
-
-          src = ./.;
-
-          buildInputs = with pkgs; [
-          ];
-
-          buildPhase = ''
-            TODO:
-          '';
-
-          installPhase = ''
-            TODO:
-          '';
-        };
-        apps.default = {
-          type = "app";
-          program = "TODO";
-        };
-      }
     );
 }
