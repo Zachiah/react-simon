@@ -1,5 +1,3 @@
-import Input from "./Input";
-
 const KeySelectorInput = (p: {
   value: string,
   onChange: (v: string) => void,

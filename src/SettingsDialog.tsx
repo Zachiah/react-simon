@@ -1,5 +1,6 @@
 import Input from "./Input";
 import KeySelectorInput from "./KeySelectorInput";
+import {type Settings} from "./App"
 
 const SettingsDialog = (p: {
   settings: Settings,

@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import Input from "./Input";
-import KeySelectorInput from "./KeySelectorInput";
 import SettingsDialog from './SettingsDialog';
 
 type Color = 'green' | 'red' | 'yellow' | 'blue';
@@ -75,7 +73,7 @@ const dispatch = (s: State, a: Action): State => {
 
 type PlayingStatus = 'gap' | 'show';
 
-type Settings = {
+export type Settings = {
   gapDuration: number,
   showDuration: number,
   greenKey: string,
